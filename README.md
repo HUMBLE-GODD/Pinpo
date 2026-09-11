@@ -71,7 +71,7 @@ Per docu3C submission requirements, this project was developed across four discr
 
 * **Meaningful Earlier Commit SHA:** `ecc68c5`  
   *Message:* `fix(provenance): add deterministic line alignment, boundary snapping, and deduplication`
-* **Final Submission Commit SHA:** `b78651a`  
+* **Final Submission Commit SHA:** `cbd12ea`  
   *Message:* `feat(demo): add interactive web viewer, stability benchmark suite, and final documentation`
 
 ### What Changed Between These Commits and Why:
