@@ -113,29 +113,26 @@ document.addEventListener("DOMContentLoaded", () => {
             el.classList.remove("highlighted", "highlighted-first", "highlighted-last");
         });
 
-        // Highlight matching line range
+        // Highlight all rendered lines within the topic's page:line range.
+        // This works correctly even when empty lines have been filtered out.
         let firstLineEl = null;
-        let curP = t.start_page;
-        let curL = t.start_line;
-
-        while (curP < t.end_page || (curP === t.end_page && curL <= t.end_line)) {
-            const lineEl = document.getElementById(`line-${curP}-${curL}`);
-            if (lineEl) {
-                lineEl.classList.add("highlighted");
+        let lastLineEl = null;
+        const allLines = document.querySelectorAll(".transcript-line");
+        allLines.forEach(el => {
+            const p = Number(el.dataset.page);
+            const l = Number(el.dataset.line);
+            const afterStart = p > t.start_page || (p === t.start_page && l >= t.start_line);
+            const beforeEnd = p < t.end_page || (p === t.end_page && l <= t.end_line);
+            if (afterStart && beforeEnd) {
+                el.classList.add("highlighted");
                 if (!firstLineEl) {
-                    firstLineEl = lineEl;
-                    lineEl.classList.add("highlighted-first");
+                    firstLineEl = el;
+                    el.classList.add("highlighted-first");
                 }
-                if (curP === t.end_page && curL === t.end_line) {
-                    lineEl.classList.add("highlighted-last");
-                }
+                lastLineEl = el;
             }
-            curL++;
-            if (curL > 25) {
-                curP++;
-                curL = 1;
-            }
-        }
+        });
+        if (lastLineEl) lastLineEl.classList.add("highlighted-last");
 
         // Scroll first line into view smoothly
         if (firstLineEl) {
@@ -166,6 +163,16 @@ document.addEventListener("DOMContentLoaded", () => {
         if (witEl && data.witness) witEl.textContent = data.witness;
         if (matEl && data.caseName) matEl.textContent = data.caseName;
         if (dateEl && data.date) dateEl.textContent = data.date;
+
+        // Update transcript pane header with accurate line/page counts
+        const transcriptHeader = document.getElementById("transcriptHeaderMeta");
+        if (transcriptHeader && data.lines && data.lines.length > 0) {
+            const pages = [...new Set(data.lines.map(l => l.page))].sort((a, b) => a - b);
+            const minPage = pages[0];
+            const maxPage = pages[pages.length - 1];
+            const count = data.lines.length;
+            transcriptHeader.textContent = `Pages ${minPage} - ${maxPage} | ${count.toLocaleString()} Canonical Lines`;
+        }
     }
 
     // Dynamic Deposition JSON / JS Loader
@@ -389,11 +396,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
                     // Update UI
                     updateHeaderMeta();
-                    const transcriptHeader = document.getElementById("transcriptHeaderMeta");
-                    if (transcriptHeader) {
-                        transcriptHeader.textContent = `${result.pageRange || ""} | ${result.totalLines || result.lines.length} Canonical Lines`;
-                    }
-
                     renderTranscript(data.lines);
                     renderTopics(data.topics);
 

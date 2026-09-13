@@ -165,6 +165,11 @@ class PinpoHandler(BaseHTTPRequestHandler):
             # Parse canonical lines so they are guaranteed present for the UI viewer
             parsed_lines = parser.parse(start_page=auto_start, end_page=target_end)
 
+            # Filter to only lines that have actual text (removes blank header/footer slots)
+            substantive_lines = [l for l in parsed_lines if l.text.strip()]
+            first_sub = substantive_lines[0] if substantive_lines else None
+            last_sub = substantive_lines[-1] if substantive_lines else None
+
             topics_data = []
             try:
                 topic_index = run_pipeline(
@@ -181,17 +186,19 @@ class PinpoHandler(BaseHTTPRequestHandler):
                 # If LLM API is rate-limited or fails, provide structural testimony outline
                 topics_data = [{
                     "topic": f"Substantive Examination (Pages {auto_start}–{target_end})",
-                    "start_page": auto_start,
-                    "start_line": 1,
-                    "end_page": target_end,
-                    "end_line": 25,
+                    "start_page": first_sub.page if first_sub else auto_start,
+                    "start_line": first_sub.line if first_sub else 1,
+                    "end_page": last_sub.page if last_sub else target_end,
+                    "end_line": last_sub.line if last_sub else 25,
+                    "start_global_id": first_sub.global_line_id if first_sub else 1,
+                    "end_global_id": last_sub.global_line_id if last_sub else 25,
                     "summary": f"Sworn deposition testimony of {meta.get('witness', 'Witness')} in matter of {meta.get('case_name', 'Examination')}.",
-                    "supporting_quote": parsed_lines[0].text if parsed_lines else "",
+                    "supporting_quote": first_sub.text if first_sub else "",
                     "confidence": 1.0,
                     "verified": True
                 }]
 
-            # Serialize canonical lines for frontend
+            # Serialize only substantive lines (those with actual text) for the frontend
             serialized_lines = [
                 {
                     "global_id": l.global_line_id,
@@ -201,7 +208,7 @@ class PinpoHandler(BaseHTTPRequestHandler):
                     "text": l.text,
                     "timestamp": l.timestamp
                 }
-                for l in parsed_lines
+                for l in substantive_lines
             ]
 
             response_payload = {
