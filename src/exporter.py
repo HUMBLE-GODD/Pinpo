@@ -3,6 +3,7 @@ Topic Index Exporter.
 Produces standard machine-readable JSON and human-readable HTML/Markdown formats.
 """
 
+import html
 import json
 from pathlib import Path
 from typing import Optional
@@ -44,8 +45,9 @@ class TopicIndexExporter:
             ver_tag = "✅" if t.verified else "⚠️"
             quote_clean = t.supporting_quote.replace("\n", " ").replace("|", "\\|")
             summary_clean = t.summary.replace("\n", " ").replace("|", "\\|")
+            quote_display = f'*"{quote_clean[:100]}..."*' if quote_clean else "*(No quote)*"
             md_lines.append(
-                f"| {idx} | **{t.topic}** | {t.start_coordinate} | {t.end_coordinate} | {summary_clean} | *\"{quote_clean[:100]}...\"* | {ver_tag} |"
+                f"| {idx} | **{t.topic}** | {t.start_coordinate} | {t.end_coordinate} | {summary_clean} | {quote_display} | {ver_tag} |"
             )
 
         with open(file_path, "w", encoding="utf-8") as f:
@@ -56,14 +58,17 @@ class TopicIndexExporter:
         for idx, t in enumerate(index.topics, 1):
             badge_class = "badge-verified" if t.verified else "badge-unverified"
             badge_text = "Verified" if t.verified else "Review"
+            safe_topic = html.escape(t.topic)
+            safe_summary = html.escape(t.summary)
+            safe_quote = html.escape(t.supporting_quote)
             rows.append(f"""
             <tr>
                 <td class="num">{idx}</td>
-                <td class="topic-name"><strong>{t.topic}</strong></td>
+                <td class="topic-name"><strong>{safe_topic}</strong></td>
                 <td class="coord">{t.start_coordinate}</td>
                 <td class="coord">{t.end_coordinate}</td>
-                <td class="summary">{t.summary}</td>
-                <td class="quote">“{t.supporting_quote}”</td>
+                <td class="summary">{safe_summary}</td>
+                <td class="quote">&ldquo;{safe_quote}&rdquo;</td>
                 <td><span class="badge {badge_class}">{badge_text} ({int(t.confidence*100)}%)</span></td>
             </tr>
             """)

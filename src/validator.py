@@ -90,8 +90,10 @@ class ProvenanceValidator:
             return None, None, 0.0
 
         # Search window: 2 pages before start to 2 pages after end
-        search_start_page = max(7, entry.start_page - 2)
-        search_end_page = min(88, entry.end_page + 2)
+        min_page = min(l.page for l in self.parser.lines) if self.parser.lines else 1
+        max_page = max(l.page for l in self.parser.lines) if self.parser.lines else 999
+        search_start_page = max(min_page, entry.start_page - 2)
+        search_end_page = min(max_page, entry.end_page + 2)
 
         search_lines = self.parser.get_range(
             start_page=search_start_page,

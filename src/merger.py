@@ -43,10 +43,17 @@ class TopicMerger:
             overlap = self._has_overlap_or_adjacency(prev, current)
             similar = self._is_similar_topic(prev.topic, current.topic)
 
-            if overlap and similar:
-                # Merge into single encompassing topic
-                prev.end_page = max(prev.end_page, current.end_page)
-                if prev.end_page == current.end_page:
+            # Merge if titles are similar AND they overlap,
+            # OR if there is significant coordinate overlap (>50%) regardless of title
+            significant_overlap = overlap and self._compute_overlap_ratio(prev, current) > 0.50
+
+            if (overlap and similar) or significant_overlap:
+                # Merge into single encompassing topic — keep the longer/broader entry's title
+                new_end_page = max(prev.end_page, current.end_page)
+                if new_end_page > prev.end_page:
+                    prev.end_page = new_end_page
+                    prev.end_line = current.end_line
+                elif new_end_page == prev.end_page:
                     prev.end_line = max(prev.end_line, current.end_line)
                 
                 # Combine summaries if unique
@@ -64,7 +71,10 @@ class TopicMerger:
             ):
                 # Absorb into preceding parent topic
                 prev.end_page = max(prev.end_page, current.end_page)
-                prev.end_line = max(prev.end_line, current.end_line)
+                if prev.end_page == current.end_page:
+                    prev.end_line = max(prev.end_line, current.end_line)
+                else:
+                    prev.end_line = current.end_line
                 continue
 
             merged.append(current)
@@ -94,6 +104,23 @@ class TopicMerger:
         if t1 == t2 or t1 in t2 or t2 in t1:
             return True
         return SequenceMatcher(None, t1, t2).ratio() >= self.title_similarity_threshold
+
+    def _compute_overlap_ratio(self, a: TopicEntry, b: TopicEntry) -> float:
+        """Computes the fraction of the smaller topic's lines that overlap with the larger topic."""
+        # Convert to global line offsets for easy comparison
+        a_start = (a.start_page - 1) * 25 + a.start_line
+        a_end = (a.end_page - 1) * 25 + a.end_line
+        b_start = (b.start_page - 1) * 25 + b.start_line
+        b_end = (b.end_page - 1) * 25 + b.end_line
+
+        overlap_start = max(a_start, b_start)
+        overlap_end = min(a_end, b_end)
+        overlap_lines = max(0, overlap_end - overlap_start + 1)
+
+        smaller_span = min(a_end - a_start + 1, b_end - b_start + 1)
+        if smaller_span <= 0:
+            return 0.0
+        return overlap_lines / smaller_span
 
     def _estimate_line_span(self, entry: TopicEntry) -> int:
         """Estimates total line count spanned by topic entry."""

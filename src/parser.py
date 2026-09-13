@@ -49,9 +49,8 @@ class TranscriptParser:
         active_speaker = ""
 
         # Substantive testimony in Persis Yu PDF spans 1-based PDF pages 7 to 88 (indices 6 to 87).
-        # We enforce a ceiling of PDF index 87 (page 88) to prevent colliding with the 
-        # separate page numbering in the trailing concordance word index (PDF pages 94-122).
-        max_pdf_index = min(len(doc), 88)
+        # Use end_page parameter to determine ceiling, with buffer for page numbering offset.
+        max_pdf_index = min(len(doc), end_page + 5)
 
         for page_idx in range(max_pdf_index):
             page = doc[page_idx]
