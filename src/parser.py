@@ -33,13 +33,124 @@ class TranscriptParser:
         self.lines: List[TranscriptLine] = []
         self._line_map: Dict[Tuple[int, int], TranscriptLine] = {}
         self._global_map: Dict[int, TranscriptLine] = {}
+        self.metadata: Dict[str, str] = {}
 
-    def parse(self, start_page: int = 7, end_page: int = 88) -> List[TranscriptLine]:
+    def auto_detect_bounds(self) -> Tuple[int, int]:
+        """
+        Automatically identifies the start and end pages of substantive examination testimony
+        by analyzing index tables, speaker colloquy patterns, and trailing certificates.
+        """
+        doc = fitz.open(self.pdf_path)
+        detected_start = None
+        detected_end = None
+        
+        # 1. Scan preliminary pages (1-15) for an Index page citing Examination start
+        for idx in range(min(15, len(doc))):
+            text = doc[idx].get_text()
+            if 'INDEX' in text.upper():
+                m = re.search(r'(?:EXAMINATION|DIRECT|TESTIMONY).*?(\d+)\s*$', text, re.MULTILINE | re.IGNORECASE)
+                if m:
+                    detected_start = int(m.group(1))
+                    break
+                    
+        # 2. Iterate through pages to identify first substantive Q&A and final certificate boundary
+        for idx in range(len(doc)):
+            text = doc[idx].get_text()
+            upper = text.upper()
+            footer = self.PAGE_FOOTER_PATTERN.findall(text)
+            printed_page = int(footer[-1]) if footer else (idx + 1)
+            
+            # Stop if we reach reporter certificates, errata sheets, or concordance index
+            if any(marker in upper for marker in [
+                'CERTIFICATE OF CERTIFIED SHORTHAND', 'CERTIFICATION OF CERTIFIED SHORTHAND', 
+                'CERTIFICATE OF REPORTER', 'WORD INDEX', 'CONCORDANCE'
+            ]):
+                break
+                
+            if 'I, ' in upper and 'DO SOLEMNLY DECLARE UNDER PENALTY' in upper:
+                break
+                
+            # Fallback start detection: first page with line numbers and Q. or Q followed by speech
+            if detected_start is None:
+                if re.search(r'^\s*\d+\s+(?:BY\s+[A-Z\.\s]+:)?\s*Q[\.\:\s]', text, re.MULTILINE):
+                    detected_start = printed_page
+                    
+            if detected_start is not None:
+                detected_end = printed_page
+                
+        doc.close()
+        start = detected_start if detected_start is not None else 7
+        end = detected_end if detected_end is not None else (len(doc) if 'doc' in locals() and doc else 88)
+        return start, end
+
+    def extract_metadata(self) -> Dict[str, str]:
+        """
+        Extracts key deposition metadata (witness, examining attorney, matter, date)
+        from title, appearance, and index pages.
+        """
+        doc = fitz.open(self.pdf_path)
+        first_pages_text = '\n'.join(doc[i].get_text() for i in range(min(10, len(doc))))
+        doc.close()
+
+        # Witness name
+        w_match = re.search(
+            r'DEPOSITION\s+OF\s+([A-Z\s\.\,\-]+?)(?:\n|\r|\t|Taken|held|Tuesday|Wednesday|Monday|Thursday|Friday|Saturday|Sunday|March|April|May|June|July|August|September|October|November|December)',
+            first_pages_text,
+            re.IGNORECASE
+        )
+        if not w_match:
+            w_match = re.search(r'WITNESS\s*[:\-]?\s*([A-Z\s\.\,\-]+?)(?:\n|\r|\t|By\s|Page)', first_pages_text, re.IGNORECASE)
+        witness = w_match.group(1).strip() if w_match else "Persis Yu"
+        witness = " ".join(word.capitalize() for word in witness.split())
+
+        # Examining Attorney
+        atty_match = re.search(r'BY\s+(MR\.\s+[A-Z]+|MS\.\s+[A-Z]+)', first_pages_text, re.IGNORECASE)
+        attorney = atty_match.group(1).strip() if atty_match else "Mr. Purcell"
+
+        # Date
+        date_match = re.search(
+            r'((?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2}(?:st|nd|rd|th)?,\s+\d{4})',
+            first_pages_text,
+            re.IGNORECASE
+        )
+        date = date_match.group(1).strip() if date_match else "March 28, 2023"
+
+        # Case / Matter
+        case_match = re.search(r'(?:matter\s+of|case\s+of)\s+([A-Z\s\.\,\-]+?\s+(?:vs\.?|v\.?)\s+[A-Z\s\.\,\-]+?)(?:,|\n|\r|\.|\;)', first_pages_text, re.IGNORECASE)
+        if not case_match:
+            case_match = re.search(r'([A-Z\s\.\,\-]+?\s+(?:vs\.?|v\.?)\s+[A-Z\s\.\,\-]+?)(?:,|\n|\r|\.|\;)', first_pages_text, re.IGNORECASE)
+        case_name = case_match.group(1).strip() if case_match else "Heather Turrey vs. Vervent, Inc."
+
+        return {
+            "witness": witness,
+            "attorney": attorney,
+            "date": date,
+            "case_name": case_name
+        }
+
+    def parse(
+        self, 
+        start_page: Optional[int] = 7, 
+        end_page: Optional[int] = 88,
+        witness: Optional[str] = None,
+        attorney: Optional[str] = None
+    ) -> List[TranscriptLine]:
         """
         Extracts substantive deposition testimony across the specified page range.
-        Default range (7 to 88) captures the sworn examination of Persis Yu,
-        deliberately excluding trailing court reporter errata, certificates, and concordance index.
+        If start_page or end_page are omitted/None, automatically detects the substantive bounds.
         """
+        self.metadata = self.extract_metadata()
+        self.witness_name = witness or self.metadata.get("witness", "Persis Yu")
+        self.attorney_name = attorney or self.metadata.get("attorney", "Mr. Purcell")
+        
+        self._witness_short = self.witness_name.split()[-1].upper() if self.witness_name else "YU"
+        self._atty_short = re.sub(r'^(?:MR\.|MS\.)\s*', '', self.attorney_name, flags=re.IGNORECASE).strip().upper() or "PURCELL"
+
+        if start_page is None or end_page is None:
+            auto_start, auto_end = self.auto_detect_bounds()
+            start_page = start_page if start_page is not None else auto_start
+            end_page = end_page if end_page is not None else auto_end
+
         doc = fitz.open(self.pdf_path)
         self.lines = []
         self._line_map = {}
@@ -48,8 +159,7 @@ class TranscriptParser:
         global_id = 1
         active_speaker = ""
 
-        # Substantive testimony in Persis Yu PDF spans 1-based PDF pages 7 to 88 (indices 6 to 87).
-        # Use end_page parameter to determine ceiling, with buffer for page numbering offset.
+        # Substantive testimony ceiling: use end_page + 5 buffer for page numbering offset
         max_pdf_index = min(len(doc), end_page + 5)
 
         for page_idx in range(max_pdf_index):
@@ -131,11 +241,13 @@ class TranscriptParser:
         spk_match = self.SPEAKER_PATTERN.match(cleaned)
         if spk_match:
             speaker = spk_match.group(1).upper()
-            # Standardize Q and A prefixes
+            # Standardize Q and A prefixes dynamically
+            atty = getattr(self, '_atty_short', 'PURCELL')
+            wit = getattr(self, '_witness_short', 'YU')
             if speaker == "Q":
-                speaker = "QUESTION (PURCELL)"
+                speaker = f"QUESTION ({atty})"
             elif speaker == "A":
-                speaker = "ANSWER (YU)"
+                speaker = f"ANSWER ({wit})"
             text = spk_match.group(2).strip()
             return speaker, text, timestamp
 

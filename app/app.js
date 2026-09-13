@@ -158,7 +158,73 @@ document.addEventListener("DOMContentLoaded", () => {
         renderTopics(filtered);
     });
 
+    // Update Header Metadata
+    function updateHeaderMeta() {
+        const witEl = document.getElementById("headerWitness");
+        const matEl = document.getElementById("headerMatter");
+        const dateEl = document.getElementById("headerDate");
+        if (witEl && data.witness) witEl.textContent = data.witness;
+        if (matEl && data.caseName) matEl.textContent = data.caseName;
+        if (dateEl && data.date) dateEl.textContent = data.date;
+    }
+
+    // Dynamic Deposition JSON / JS Loader
+    const loadBtn = document.getElementById("loadBtn");
+    const loadDataInput = document.getElementById("loadDataInput");
+
+    if (loadBtn && loadDataInput) {
+        loadBtn.addEventListener("click", () => {
+            loadDataInput.click();
+        });
+
+        loadDataInput.addEventListener("change", (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const content = event.target.result;
+                    let parsedData = null;
+                    if (file.name.endsWith(".json")) {
+                        const json = JSON.parse(content);
+                        parsedData = {
+                            title: json.title || "Custom Deposition",
+                            witness: json.witness || "Custom Witness",
+                            date: json.date || "Custom Date",
+                            caseName: json.case_name || "Custom Matter",
+                            topics: json.topics || [],
+                            lines: json.lines || data.lines || []
+                        };
+                    } else if (file.name.endsWith(".js")) {
+                        const match = content.match(/window\.DEPOSITION_DATA\s*=\s*(\{[\s\S]*\});/);
+                        if (match) {
+                            parsedData = JSON.parse(match[1]);
+                        }
+                    }
+                    if (parsedData && parsedData.topics) {
+                        data.title = parsedData.title;
+                        data.witness = parsedData.witness;
+                        data.date = parsedData.date;
+                        data.caseName = parsedData.caseName;
+                        data.topics = parsedData.topics;
+                        if (parsedData.lines && parsedData.lines.length > 0) {
+                            data.lines = parsedData.lines;
+                        }
+                        updateHeaderMeta();
+                        renderTranscript(data.lines);
+                        renderTopics(data.topics);
+                    }
+                } catch (err) {
+                    alert("Failed to load deposition data: " + err.message);
+                }
+            };
+            reader.readAsText(file);
+        });
+    }
+
     // Initialize
+    updateHeaderMeta();
     renderTranscript(data.lines);
     renderTopics(data.topics);
 });

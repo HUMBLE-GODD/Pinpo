@@ -111,16 +111,23 @@ cp .env.example .env
 ```
 
 ### 3. Run Verification Test Suite
-Execute the 12 automated unit and integration tests:
+Execute the 15 automated unit and integration tests (including boundary detection & metadata extraction):
 ```bash
 pytest
 ```
-*Expected result: 12 passed in ~1.3s.*
+*Expected result: 15 passed in ~1.5s.*
 
 ### 4. Run the Full End-to-End Indexing Pipeline
-Ingests the Persis Yu deposition, runs Gemini extraction with zero-temperature, validates provenance, merges boundaries, audits omissions, and exports all formats:
+Ingests any court-reporter deposition PDF, automatically detects examination start/end boundaries, extracts topics with Gemini at zero-temperature, validates line provenance, merges boundaries, audits omissions, and exports all formats:
 ```bash
+# Process default Persis Yu deposition:
 python3 scripts/run_pipeline.py
+
+# Process ANY other deposition PDF with automatic boundary & metadata detection:
+python3 scripts/run_pipeline.py --pdf /path/to/any_deposition.pdf --update-viewer
+
+# Optional: override bounds or limit to first N pages (ideal for fast test runs & quota saving):
+python3 scripts/run_pipeline.py --pdf /path/to/any_deposition.pdf --max-pages 10 --update-viewer
 ```
 *Output artifacts generated:*
 - `data/output/topic_index.json` (Structured machine-readable index)

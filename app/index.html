@@ -14,9 +14,13 @@
             <span style="font-size: 13px; font-weight: normal; color: #94a3b8; margin-left: 8px;">Deposition Topic Navigator</span>
         </div>
         <div class="meta-details">
-            <div><strong>Witness:</strong> Persis Yu</div>
-            <div><strong>Matter:</strong> Turrey v. Vervent, Inc.</div>
-            <div><strong>Date:</strong> March 28, 2023</div>
+            <div><strong>Witness:</strong> <span id="headerWitness">Persis Yu</span></div>
+            <div><strong>Matter:</strong> <span id="headerMatter">Turrey v. Vervent, Inc.</span></div>
+            <div><strong>Date:</strong> <span id="headerDate">March 28, 2023</span></div>
+            <button id="loadBtn" style="margin-left: 12px; background: #334155; color: #f8fafc; border: 1px solid #475569; padding: 4px 10px; border-radius: 6px; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                <span>📂</span> Load JSON
+            </button>
+            <input type="file" id="loadDataInput" accept=".json,.js" style="display: none;" />
         </div>
     </header>
 

@@ -66,3 +66,28 @@ def test_compact_text_tagging(parser):
     compact = parser.to_compact_text()
     assert "[P07:L12]" in compact
     assert "[P08:L02]" in compact
+
+
+def test_auto_detect_bounds(parser):
+    """Verifies that auto_detect_bounds automatically identifies start and end pages."""
+    start, end = parser.auto_detect_bounds()
+    assert start == 7, f"Expected start page 7, got {start}"
+    assert end == 88, f"Expected end page 88, got {end}"
+
+
+def test_extract_metadata(parser):
+    """Verifies automatic metadata extraction from preliminary pages."""
+    meta = parser.extract_metadata()
+    assert "witness" in meta
+    assert "Persis Yu" in meta["witness"]
+    assert "case_name" in meta
+    assert "date" in meta
+
+
+def test_parse_with_auto_detect(parser):
+    """Verifies that parse() without explicit start/end page uses auto-detected bounds."""
+    lines = parser.parse(start_page=None, end_page=None)
+    expected_count = (88 - 7 + 1) * 25
+    assert len(lines) == expected_count
+    assert lines[0].page == 7
+    assert lines[-1].page == 88

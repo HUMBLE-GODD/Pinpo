@@ -1,6 +1,6 @@
 // Auto-generated deposition viewer data
 window.DEPOSITION_DATA = {
-    title: "Deposition of Persis Yu",
+    title: "Deposition of Persis Yu - Topic Index",
     witness: "Persis Yu",
     date: "March 28, 2023",
     caseName: "Heather Turrey vs. Vervent, Inc.",
