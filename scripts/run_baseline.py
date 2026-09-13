@@ -4,9 +4,14 @@ Executes chunk-based LLM topic extraction without post-processing or determinist
 generating the raw candidate index to establish a baseline.
 """
 
+import sys
 import json
 import time
 from pathlib import Path
+
+# Ensure project root is in sys.path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from src.parser import TranscriptParser
 from src.chunker import TranscriptChunker
 from src.segmenter import TopicSegmenter
