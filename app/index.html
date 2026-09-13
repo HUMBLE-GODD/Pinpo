@@ -18,10 +18,14 @@
             background: rgba(15, 23, 42, 0.75) !important;
             backdrop-filter: blur(6px) !important;
             -webkit-backdrop-filter: blur(6px) !important;
-            display: flex !important;
+            display: none;
             justify-content: center !important;
             align-items: center !important;
             z-index: 9999 !important;
+        }
+
+        .modal-overlay.open {
+            display: flex !important;
         }
 
         .modal-box {
@@ -329,23 +333,11 @@
                     <input type="file" id="pdfFileInput" accept=".pdf" style="display: none;" />
                 </div>
 
-                <div class="modal-options">
-                    <label style="font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 4px; display: block;">Processing Mode:</label>
-                    <div class="radio-group">
-                        <label class="radio-card selected" id="modeFullLabel">
-                            <input type="radio" name="processMode" value="full" checked />
-                            <div class="radio-info">
-                                <span class="radio-title">🏛️ Full Deposition (Complete Examination)</span>
-                                <span class="radio-sub">Processes entire transcript from opening colloquy to closing errata.</span>
-                            </div>
-                        </label>
-                        <label class="radio-card" id="modeQuickLabel">
-                            <input type="radio" name="processMode" value="quick" />
-                            <div class="radio-info">
-                                <span class="radio-title">⚡ Quick Mode (First 10 Pages Only)</span>
-                                <span class="radio-sub">Fast sample for quick verification.</span>
-                            </div>
-                        </label>
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 14px; display: flex; align-items: center; gap: 12px;">
+                    <span style="font-size: 22px;">🏛️</span>
+                    <div>
+                        <div style="font-size: 13px; font-weight: 600; color: #0f172a;">Full Deposition Examination</div>
+                        <div style="font-size: 11px; color: #64748b; margin-top: 2px;">Automatically detects deponent bounds, parses canonical 25-line grid, and indexes topics with line provenance.</div>
                     </div>
                 </div>
 
@@ -372,6 +364,6 @@
 
     <!-- Embedded Data & Client Controller -->
     <script src="viewer_data.js"></script>
-    <script src="app.js"></script>
+    <script src="app.js?v=3.5"></script>
 </body>
 </html>

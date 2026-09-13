@@ -245,36 +245,46 @@ document.addEventListener("DOMContentLoaded", () => {
     const progressFill = document.getElementById("progressFill");
     const modalError = document.getElementById("modalError");
 
-    const modeQuickLabel = document.getElementById("modeQuickLabel");
-    const modeFullLabel = document.getElementById("modeFullLabel");
-
     let selectedPdfFile = null;
 
     if (openUploadModalBtn && uploadModal) {
-        openUploadModalBtn.addEventListener("click", () => {
-            uploadModal.style.display = "flex";
-            resetModalState();
-        });
-
-        const hideModal = () => {
-            uploadModal.style.display = "none";
+        const showModal = () => {
+            uploadModal.classList.add("open");
+            uploadModal.style.setProperty("display", "flex", "important");
             resetModalState();
         };
 
-        if (closeModalBtn) closeModalBtn.addEventListener("click", hideModal);
-        if (cancelModalBtn) cancelModalBtn.addEventListener("click", hideModal);
+        const hideModal = (e) => {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            uploadModal.classList.remove("open");
+            uploadModal.style.setProperty("display", "none", "important");
+            resetModalState();
+        };
 
-        // Radio card selection styling
-        document.querySelectorAll('input[name="processMode"]').forEach(radio => {
-            radio.addEventListener("change", (e) => {
-                if (e.target.value === "quick") {
-                    modeQuickLabel.classList.add("selected");
-                    modeFullLabel.classList.remove("selected");
-                } else {
-                    modeFullLabel.classList.add("selected");
-                    modeQuickLabel.classList.remove("selected");
-                }
-            });
+        openUploadModalBtn.addEventListener("click", showModal);
+
+        if (closeModalBtn) {
+            closeModalBtn.addEventListener("click", hideModal);
+        }
+        if (cancelModalBtn) {
+            cancelModalBtn.addEventListener("click", hideModal);
+        }
+
+        // Click on backdrop outside modal box to close
+        uploadModal.addEventListener("click", (e) => {
+            if (e.target === uploadModal) {
+                hideModal(e);
+            }
+        });
+
+        // Pressing Escape closes modal
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "Escape") {
+                hideModal(e);
+            }
         });
 
         // Drop zone interaction
@@ -345,9 +355,6 @@ document.addEventListener("DOMContentLoaded", () => {
             modalError.style.display = "none";
             progressSection.style.display = "block";
 
-            const selectedMode = document.querySelector('input[name="processMode"]:checked')?.value || "full";
-            const maxPages = selectedMode === "quick" ? 10 : 0;
-
             const steps = [
                 "Uploading deposition to local pipeline server...",
                 "Ingesting 25-line transcript grid with PyMuPDF...",
@@ -366,8 +373,8 @@ document.addEventListener("DOMContentLoaded", () => {
             try {
                 const formData = new FormData();
                 formData.append("file", selectedPdfFile);
-                formData.append("mode", selectedMode);
-                formData.append("max_pages", String(maxPages));
+                formData.append("mode", "full");
+                formData.append("max_pages", "0");
 
                 const response = await fetch("/api/upload", {
                     method: "POST",

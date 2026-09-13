@@ -310,10 +310,14 @@ header {
     bottom: 0;
     background: rgba(15, 23, 42, 0.75);
     backdrop-filter: blur(4px);
-    display: flex;
+    display: none;
     justify-content: center;
     align-items: center;
     z-index: 1000;
+}
+
+.modal-overlay.open {
+    display: flex;
 }
 
 .modal-box {
