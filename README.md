@@ -136,6 +136,9 @@ open app/index.html
 # Option B: Run via a local lightweight HTTP server
 python3 -m http.server 8080 -d app
 # Then navigate to: http://localhost:8080
+
+# Option C: Access the Live Cloud Demo (GitHub Pages)
+# https://humble-godd.github.io/Pinpo/app/
 ```
 
 ### 6. Run the 3-Run Stability Benchmark
