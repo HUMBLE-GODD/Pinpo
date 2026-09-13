@@ -223,6 +223,190 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+    // PDF Upload Modal & Processing Logic
+    const openUploadModalBtn = document.getElementById("openUploadModalBtn");
+    const uploadModal = document.getElementById("uploadModal");
+    const closeModalBtn = document.getElementById("closeModalBtn");
+    const cancelModalBtn = document.getElementById("cancelModalBtn");
+    const dropZone = document.getElementById("dropZone");
+    const pdfFileInput = document.getElementById("pdfFileInput");
+    const selectedFileName = document.getElementById("selectedFileName");
+    const dropZoneText = document.getElementById("dropZoneText");
+    const startUploadBtn = document.getElementById("startUploadBtn");
+    const progressSection = document.getElementById("progressSection");
+    const progressText = document.getElementById("progressText");
+    const progressFill = document.getElementById("progressFill");
+    const modalError = document.getElementById("modalError");
+
+    const modeQuickLabel = document.getElementById("modeQuickLabel");
+    const modeFullLabel = document.getElementById("modeFullLabel");
+
+    let selectedPdfFile = null;
+
+    if (openUploadModalBtn && uploadModal) {
+        openUploadModalBtn.addEventListener("click", () => {
+            uploadModal.style.display = "flex";
+            resetModalState();
+        });
+
+        const hideModal = () => {
+            uploadModal.style.display = "none";
+            resetModalState();
+        };
+
+        if (closeModalBtn) closeModalBtn.addEventListener("click", hideModal);
+        if (cancelModalBtn) cancelModalBtn.addEventListener("click", hideModal);
+
+        // Radio card selection styling
+        document.querySelectorAll('input[name="processMode"]').forEach(radio => {
+            radio.addEventListener("change", (e) => {
+                if (e.target.value === "quick") {
+                    modeQuickLabel.classList.add("selected");
+                    modeFullLabel.classList.remove("selected");
+                } else {
+                    modeFullLabel.classList.add("selected");
+                    modeQuickLabel.classList.remove("selected");
+                }
+            });
+        });
+
+        // Drop zone interaction
+        dropZone.addEventListener("click", () => {
+            pdfFileInput.click();
+        });
+
+        dropZone.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            dropZone.classList.add("dragover");
+        });
+
+        dropZone.addEventListener("dragleave", () => {
+            dropZone.classList.remove("dragover");
+        });
+
+        dropZone.addEventListener("drop", (e) => {
+            e.preventDefault();
+            dropZone.classList.remove("dragover");
+            if (e.dataTransfer.files.length > 0) {
+                handleSelectedFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        pdfFileInput.addEventListener("change", (e) => {
+            if (e.target.files.length > 0) {
+                handleSelectedFile(e.target.files[0]);
+            }
+        });
+
+        function handleSelectedFile(file) {
+            if (!file.name.toLowerCase().endsWith(".pdf")) {
+                showModalError("Please select a valid court reporter .pdf deposition file.");
+                return;
+            }
+            selectedPdfFile = file;
+            selectedFileName.textContent = `Selected: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+            selectedFileName.style.display = "inline-block";
+            dropZoneText.style.display = "none";
+            modalError.style.display = "none";
+            startUploadBtn.disabled = false;
+        }
+
+        function resetModalState() {
+            selectedPdfFile = null;
+            if (selectedFileName) selectedFileName.style.display = "none";
+            if (dropZoneText) dropZoneText.style.display = "block";
+            if (startUploadBtn) startUploadBtn.disabled = true;
+            if (progressSection) progressSection.style.display = "none";
+            if (modalError) modalError.style.display = "none";
+            if (pdfFileInput) pdfFileInput.value = "";
+        }
+
+        function showModalError(msg) {
+            if (modalError) {
+                modalError.textContent = msg;
+                modalError.style.display = "block";
+            }
+            if (progressSection) progressSection.style.display = "none";
+            if (startUploadBtn) startUploadBtn.disabled = false;
+        }
+
+        // Handle Upload & Process
+        startUploadBtn.addEventListener("click", async () => {
+            if (!selectedPdfFile) return;
+
+            startUploadBtn.disabled = true;
+            modalError.style.display = "none";
+            progressSection.style.display = "block";
+
+            const selectedMode = document.querySelector('input[name="processMode"]:checked')?.value || "quick";
+            const maxPages = selectedMode === "quick" ? 10 : 0;
+
+            const steps = [
+                "Uploading deposition to local pipeline server...",
+                "Ingesting 25-line transcript grid with PyMuPDF...",
+                "Detecting examination bounds & deponent metadata...",
+                "Running Gemini semantic topic segmentation...",
+                "Snapping line provenance & finalizing index..."
+            ];
+
+            let stepIdx = 0;
+            const stepInterval = setInterval(() => {
+                stepIdx = (stepIdx + 1) % steps.length;
+                progressText.textContent = steps[stepIdx];
+                progressFill.style.width = `${Math.min(95, 20 + stepIdx * 18)}%`;
+            }, 2500);
+
+            try {
+                const formData = new FormData();
+                formData.append("file", selectedPdfFile);
+                formData.append("mode", selectedMode);
+                formData.append("max_pages", String(maxPages));
+
+                const response = await fetch("/api/upload", {
+                    method: "POST",
+                    body: formData
+                });
+
+                clearInterval(stepInterval);
+
+                if (!response.ok) {
+                    const errJson = await response.json().catch(() => ({}));
+                    throw new Error(errJson.error || `Server responded with HTTP ${response.status}`);
+                }
+
+                const result = await response.json();
+                progressFill.style.width = "100%";
+                progressText.textContent = "Complete! Rendering topic navigator...";
+
+                setTimeout(() => {
+                    // Update global state
+                    data.title = result.title;
+                    data.witness = result.witness;
+                    data.date = result.date;
+                    data.caseName = result.caseName;
+                    data.topics = result.topics;
+                    data.lines = result.lines;
+
+                    // Update UI
+                    updateHeaderMeta();
+                    const transcriptHeader = document.getElementById("transcriptHeaderMeta");
+                    if (transcriptHeader) {
+                        transcriptHeader.textContent = `${result.pageRange || ""} | ${result.totalLines || result.lines.length} Canonical Lines`;
+                    }
+
+                    renderTranscript(data.lines);
+                    renderTopics(data.topics);
+
+                    hideModal();
+                }, 600);
+
+            } catch (err) {
+                clearInterval(stepInterval);
+                showModalError(`Processing error: ${err.message}. If running locally, start the backend with 'python3 server.py'.`);
+            }
+        });
+    }
+
     // Initialize
     updateHeaderMeta();
     renderTranscript(data.lines);

@@ -45,6 +45,7 @@ env/
 *.swp
 *.swo
 
-# Large binary PDF documents (keep repo lightweight)
+# Large binary PDF documents & runtime uploads (keep repo lightweight)
 *.pdf
 !data/raw/README.md
+data/uploads/

@@ -17,7 +17,10 @@
             <div><strong>Witness:</strong> <span id="headerWitness">Persis Yu</span></div>
             <div><strong>Matter:</strong> <span id="headerMatter">Turrey v. Vervent, Inc.</span></div>
             <div><strong>Date:</strong> <span id="headerDate">March 28, 2023</span></div>
-            <button id="loadBtn" style="margin-left: 12px; background: #334155; color: #f8fafc; border: 1px solid #475569; padding: 4px 10px; border-radius: 6px; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+            <button id="openUploadModalBtn" class="upload-btn">
+                <span>📄</span> Upload PDF
+            </button>
+            <button id="loadBtn" style="background: #334155; color: #f8fafc; border: 1px solid #475569; padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 4px;">
                 <span>📂</span> Load JSON
             </button>
             <input type="file" id="loadDataInput" accept=".json,.js" style="display: none;" />
@@ -43,12 +46,70 @@
         <main class="transcript-pane">
             <div class="viewer-header">
                 <span>Official Deposition Transcript (Verbatim 25-Line Format)</span>
-                <span>Pages 7 - 88 | 2,050 Canonical Lines</span>
+                <span id="transcriptHeaderMeta">Pages 7 - 88 | 2,050 Canonical Lines</span>
             </div>
             <div class="transcript-scroll-area" id="transcriptArea">
                 <!-- Pages and lines rendered by app.js -->
             </div>
         </main>
+    </div>
+
+    <!-- Upload Deposition PDF Modal -->
+    <div class="modal-overlay" id="uploadModal" style="display: none;">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>Upload Deposition PDF</h3>
+                <button class="modal-close" id="closeModalBtn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-desc">Select any standard 25-line court reporter deposition PDF. The system will automatically detect substantive examination bounds, extract witness & case metadata, and index topics with line provenance.</p>
+                
+                <div class="drop-zone" id="dropZone">
+                    <div class="drop-zone-icon">📄</div>
+                    <div class="drop-zone-text" id="dropZoneText">Drag & drop deposition PDF here, or <strong>click to browse</strong></div>
+                    <div class="drop-zone-filename" id="selectedFileName" style="display: none;"></div>
+                    <input type="file" id="pdfFileInput" accept=".pdf" style="display: none;" />
+                </div>
+
+                <div class="modal-options">
+                    <label style="font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 4px; display: block;">Processing Mode:</label>
+                    <div class="radio-group">
+                        <label class="radio-card selected" id="modeQuickLabel">
+                            <input type="radio" name="processMode" value="quick" checked />
+                            <div class="radio-info">
+                                <span class="radio-title">⚡ Quick Mode (First 10 Pages)</span>
+                                <span class="radio-sub">Fast (~15s) opening examination. Recommended to preserve free API quota.</span>
+                            </div>
+                        </label>
+                        <label class="radio-card" id="modeFullLabel">
+                            <input type="radio" name="processMode" value="full" />
+                            <div class="radio-info">
+                                <span class="radio-title">🏛️ Full Deposition</span>
+                                <span class="radio-sub">Processes entire testimony end-to-end (takes ~1–2 mins).</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Live Progress Section -->
+                <div class="progress-section" id="progressSection" style="display: none;">
+                    <div class="spinner-container">
+                        <div class="spinner"></div>
+                        <span id="progressText">Uploading & parsing 25-line grid...</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                </div>
+
+                <!-- Error Notice -->
+                <div class="modal-error" id="modalError" style="display: none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" id="cancelModalBtn">Cancel</button>
+                <button class="btn-submit" id="startUploadBtn" disabled>Process Deposition</button>
+            </div>
+        </div>
     </div>
 
     <!-- Embedded Data & Client Controller -->
