@@ -202,7 +202,7 @@ class PinpoHandler(BaseHTTPRequestHandler):
                     "verified": True
                 }]
 
-            # Serialize only substantive lines (those with actual text) for the frontend
+            # Serialize full canonical 25-line transcript grid for the frontend viewer
             serialized_lines = [
                 {
                     "global_id": l.global_line_id,
@@ -212,7 +212,7 @@ class PinpoHandler(BaseHTTPRequestHandler):
                     "text": l.text,
                     "timestamp": l.timestamp
                 }
-                for l in substantive_lines
+                for l in parsed_lines
             ]
 
             response_payload = {

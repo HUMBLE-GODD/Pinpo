@@ -398,6 +398,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     updateHeaderMeta();
                     renderTranscript(data.lines);
                     renderTopics(data.topics);
+                    if (data.topics.length > 0) {
+                        jumpToTopic(data.topics[0], 0);
+                    }
 
                     hideModal();
                 }, 600);
@@ -413,4 +416,7 @@ document.addEventListener("DOMContentLoaded", () => {
     updateHeaderMeta();
     renderTranscript(data.lines);
     renderTopics(data.topics);
+    if (data.topics.length > 0) {
+        jumpToTopic(data.topics[0], 0);
+    }
 });
