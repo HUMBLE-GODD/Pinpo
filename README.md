@@ -111,11 +111,11 @@ cp .env.example .env
 ```
 
 ### 3. Run Verification Test Suite
-Execute the 15 automated unit and integration tests (including boundary detection & metadata extraction):
+Execute the 18 automated unit and integration tests (including boundary detection, metadata extraction, and server upload handlers):
 ```bash
-pytest
+pytest -v
 ```
-*Expected result: 15 passed in ~1.5s.*
+*Expected result: 18 passed in ~1.5s.*
 
 ### 4. Run the Full End-to-End Indexing Pipeline
 Ingests any court-reporter deposition PDF, automatically detects examination start/end boundaries, extracts topics with Gemini at zero-temperature, validates line provenance, merges boundaries, audits omissions, and exports all formats:
@@ -126,7 +126,7 @@ python3 scripts/run_pipeline.py
 # Process ANY other deposition PDF with automatic boundary & metadata detection:
 python3 scripts/run_pipeline.py --pdf /path/to/any_deposition.pdf --update-viewer
 
-# Optional: override bounds or limit to first N pages (ideal for fast test runs & quota saving):
+# Optional: override bounds or limit to first N pages:
 python3 scripts/run_pipeline.py --pdf /path/to/any_deposition.pdf --max-pages 10 --update-viewer
 ```
 *Output artifacts generated:*
@@ -134,17 +134,15 @@ python3 scripts/run_pipeline.py --pdf /path/to/any_deposition.pdf --max-pages 10
 - `data/output/topic_index.html` (Formatted HTML table)
 - `data/output/topic_index.md` (Markdown summary)
 
-### 5. Launch the Interactive Attorney Verification Viewer
-Open the standalone viewer directly in your web browser:
+### 5. Launch the Full-Stack Interactive Web Application
+Run the local full-stack server to serve the viewer and enable direct PDF uploads:
 ```bash
-# Option A: Open directly in your default browser
-open app/index.html
+# Start the full-stack server (serves UI and processes uploaded PDFs):
+python3 server.py 8080
+# Navigate to: http://localhost:8080
+# Click "Upload PDF" to drag & drop any court reporter deposition PDF!
 
-# Option B: Run via a local lightweight HTTP server
-python3 -m http.server 8080 -d app
-# Then navigate to: http://localhost:8080
-
-# Option C: Access the Live Cloud Demo (GitHub Pages)
+# Option B: Access the Static Cloud Demo (GitHub Pages)
 # https://humble-godd.github.io/Pinpo/app/
 ```
 
