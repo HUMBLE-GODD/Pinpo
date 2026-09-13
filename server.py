@@ -153,14 +153,16 @@ class PinpoHandler(BaseHTTPRequestHandler):
             meta = parser.extract_metadata()
             auto_start, auto_end = parser.auto_detect_bounds()
 
-            if mode == "quick" and max_pages is None:
+            if mode == "full":
+                max_pages = None
+            elif mode == "quick" and (max_pages is None or max_pages <= 0):
                 max_pages = 10
 
             target_end = auto_end
             if max_pages and max_pages > 0:
                 target_end = min(auto_end, auto_start + max_pages - 1)
 
-            print(f"[*] Processing pages {auto_start} to {target_end}...")
+            print(f"[*] Processing pages {auto_start} to {target_end} (mode={mode}, max_pages={max_pages})...")
             
             # Parse canonical lines so they are guaranteed present for the UI viewer
             parsed_lines = parser.parse(start_page=auto_start, end_page=target_end)
@@ -182,6 +184,8 @@ class PinpoHandler(BaseHTTPRequestHandler):
                 )
                 topics_data = [t.model_dump() for t in topic_index.topics]
             except Exception as pipeline_err:
+                import traceback
+                traceback.print_exc()
                 print(f"[!] Pipeline extraction notice: {pipeline_err}. Generating structural transcript index.")
                 # If LLM API is rate-limited or fails, provide structural testimony outline
                 topics_data = [{

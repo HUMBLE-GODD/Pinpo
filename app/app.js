@@ -345,7 +345,7 @@ document.addEventListener("DOMContentLoaded", () => {
             modalError.style.display = "none";
             progressSection.style.display = "block";
 
-            const selectedMode = document.querySelector('input[name="processMode"]:checked')?.value || "quick";
+            const selectedMode = document.querySelector('input[name="processMode"]:checked')?.value || "full";
             const maxPages = selectedMode === "quick" ? 10 : 0;
 
             const steps = [

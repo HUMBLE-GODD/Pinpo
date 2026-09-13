@@ -42,6 +42,13 @@ Rules:
 - Absorb brief 1-3 line attorney objections into the primary active topic.
 - Return ONLY a valid JSON array of objects adhering to this schema. No markdown backticks or commentary."""
 
+    FALLBACK_MODELS = [
+        "gemini-3.5-flash",
+        "gemini-3.5-flash-lite",
+        "gemini-flash-lite-latest",
+        "gemini-3-flash-preview",
+    ]
+
     def __init__(
         self,
         api_key: Optional[str] = None,
@@ -49,7 +56,7 @@ Rules:
         max_retries: int = 3
     ):
         self.api_key = api_key or os.getenv("GEMINI_API_KEY")
-        self.model = model or os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+        self.model = model or os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
         self.max_retries = max_retries
 
         if not self.api_key:
@@ -78,61 +85,71 @@ Extract all chronological topic segments according to the specified JSON schema.
             }
         }
 
-        endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent?key={self.api_key}"
+        # Build candidate model list with current model first
+        models_to_try = [self.model] + [m for m in self.FALLBACK_MODELS if m != self.model]
 
-        for attempt in range(1, self.max_retries + 1):
-            try:
-                req = urllib.request.Request(
-                    endpoint,
-                    data=json.dumps(payload).encode("utf-8"),
-                    headers={"Content-Type": "application/json"}
-                )
+        for current_model in models_to_try:
+            endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{current_model}:generateContent?key={self.api_key}"
 
-                with urllib.request.urlopen(req, timeout=45) as response:
-                    raw_resp = json.loads(response.read().decode("utf-8"))
-                    candidates = raw_resp.get("candidates", [])
-                    if not candidates:
-                        return []
+            for attempt in range(1, self.max_retries + 1):
+                try:
+                    req = urllib.request.Request(
+                        endpoint,
+                        data=json.dumps(payload).encode("utf-8"),
+                        headers={"Content-Type": "application/json"}
+                    )
 
-                    content_text = candidates[0]["content"]["parts"][0]["text"].strip()
-                    # Clean any leading/trailing markdown code fences if present
-                    if content_text.startswith("```json"):
-                        content_text = content_text[7:]
-                    if content_text.startswith("```"):
-                        content_text = content_text[3:]
-                    if content_text.endswith("```"):
-                        content_text = content_text[:-3]
+                    with urllib.request.urlopen(req, timeout=45) as response:
+                        raw_resp = json.loads(response.read().decode("utf-8"))
+                        candidates = raw_resp.get("candidates", [])
+                        if not candidates:
+                            return []
 
-                    parsed_json = json.loads(content_text.strip())
-                    entries: List[TopicEntry] = []
+                        content_text = candidates[0]["content"]["parts"][0]["text"].strip()
+                        # Clean any leading/trailing markdown code fences if present
+                        if content_text.startswith("```json"):
+                            content_text = content_text[7:]
+                        if content_text.startswith("```"):
+                            content_text = content_text[3:]
+                        if content_text.endswith("```"):
+                            content_text = content_text[:-3]
 
-                    for item in parsed_json:
-                        # Validate mandatory fields
-                        entry = TopicEntry(
-                            topic=item.get("topic", "Untitled Topic").strip(),
-                            start_page=int(item.get("start_page", chunk.start_page)),
-                            start_line=int(item.get("start_line", 1)),
-                            end_page=int(item.get("end_page", chunk.end_page)),
-                            end_line=int(item.get("end_line", 25)),
-                            summary=item.get("summary", "").strip(),
-                            supporting_quote=item.get("supporting_quote", "").strip(),
-                            confidence=0.85,  # Baseline unverified LLM candidate confidence
-                            verified=False
-                        )
-                        entries.append(entry)
+                        parsed_json = json.loads(content_text.strip())
+                        entries: List[TopicEntry] = []
 
-                    return entries
+                        for item in parsed_json:
+                            # Validate mandatory fields
+                            entry = TopicEntry(
+                                topic=item.get("topic", "Untitled Topic").strip(),
+                                start_page=int(item.get("start_page", chunk.start_page)),
+                                start_line=int(item.get("start_line", 1)),
+                                end_page=int(item.get("end_page", chunk.end_page)),
+                                end_line=int(item.get("end_line", 25)),
+                                summary=item.get("summary", "").strip(),
+                                supporting_quote=item.get("supporting_quote", "").strip(),
+                                confidence=0.85,  # Baseline unverified LLM candidate confidence
+                                verified=False
+                            )
+                            entries.append(entry)
 
-            except urllib.error.HTTPError as http_err:
-                if http_err.code == 429 and attempt < self.max_retries:
-                    wait_sec = 2 ** attempt
-                    time.sleep(wait_sec)
-                    continue
-                raise RuntimeError(f"Gemini API request failed with HTTP {http_err.code}: {http_err.read().decode('utf-8')}") from http_err
-            except Exception as e:
-                if attempt < self.max_retries:
-                    time.sleep(2)
-                    continue
-                raise RuntimeError(f"Failed to segment chunk {chunk.chunk_id}: {str(e)}") from e
+                        # Update active model to the one that succeeded
+                        self.model = current_model
+                        return entries
+
+                except urllib.error.HTTPError as http_err:
+                    err_body = http_err.read().decode("utf-8", errors="replace")
+                    if http_err.code in (429, 404):
+                        print(f"[*] Model {current_model} returned HTTP {http_err.code} (quota/availability). Trying fallback model...")
+                        break  # Break attempt loop to try next model in models_to_try
+                    if attempt < self.max_retries:
+                        time.sleep(2 ** attempt)
+                        continue
+                    raise RuntimeError(f"Gemini API request failed with HTTP {http_err.code}: {err_body}") from http_err
+                except Exception as e:
+                    if attempt < self.max_retries:
+                        time.sleep(2)
+                        continue
+                    print(f"[!] Error with model {current_model}: {e}. Trying fallback...")
+                    break
 
         return []

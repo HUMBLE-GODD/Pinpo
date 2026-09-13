@@ -74,18 +74,18 @@
                 <div class="modal-options">
                     <label style="font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 4px; display: block;">Processing Mode:</label>
                     <div class="radio-group">
-                        <label class="radio-card selected" id="modeQuickLabel">
-                            <input type="radio" name="processMode" value="quick" checked />
+                        <label class="radio-card selected" id="modeFullLabel">
+                            <input type="radio" name="processMode" value="full" checked />
                             <div class="radio-info">
-                                <span class="radio-title">⚡ Quick Mode (First 10 Pages)</span>
-                                <span class="radio-sub">Fast (~15s) opening examination. Recommended to preserve free API quota.</span>
+                                <span class="radio-title">🏛️ Full Deposition (Complete Examination)</span>
+                                <span class="radio-sub">Processes entire transcript from opening colloquy to closing errata.</span>
                             </div>
                         </label>
-                        <label class="radio-card" id="modeFullLabel">
-                            <input type="radio" name="processMode" value="full" />
+                        <label class="radio-card" id="modeQuickLabel">
+                            <input type="radio" name="processMode" value="quick" />
                             <div class="radio-info">
-                                <span class="radio-title">🏛️ Full Deposition</span>
-                                <span class="radio-sub">Processes entire testimony end-to-end (takes ~1–2 mins).</span>
+                                <span class="radio-title">⚡ Quick Mode (First 10 Pages Only)</span>
+                                <span class="radio-sub">Fast sample for quick verification.</span>
                             </div>
                         </label>
                     </div>
