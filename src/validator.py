@@ -64,28 +64,22 @@ class ProvenanceValidator:
         # 3. Semantic Validation (Pillar 3) — NLTK-powered keyword overlap
         semantic_score = self._semantic_check(entry)
 
-        # 4. Calculate Objective Verification Score (all 4 pillars combined)
-        #    Legal-tech binary trust: either 100% verified or flagged for human review
-        if start_line_obj and end_line_obj and match_score >= 0.70 and semantic_score >= 0.15:
-            # ALL 4 PILLARS PASS → 100% verified, no human review needed
+        # 4. Binary Trust Scoring — 100% or Human Review, nothing in between
+        all_pillars_pass = (
+            start_line_obj is not None
+            and end_line_obj is not None
+            and match_score >= 0.70
+            and semantic_score >= 0.15
+        )
+
+        if all_pillars_pass:
             entry.verified = True
-            entry.confidence = round(min(1.0, 0.5 + 0.5 * match_score), 3)
+            entry.confidence = 1.0
             entry.needs_human_review = False
-        elif start_line_obj and end_line_obj and match_score >= 0.70:
-            # Pillars 1,2,4 pass but semantic fails → quote grounded but topic may be mislabeled
-            entry.verified = True
-            entry.confidence = round(min(1.0, 0.5 + 0.5 * match_score) * 0.85, 3)
-            entry.needs_human_review = True  # Human should verify the topic label
-        elif start_line_obj and end_line_obj:
-            # Coordinates exist but quote NOT grounded → hallucination signal
-            entry.verified = True
-            entry.confidence = 0.60 if semantic_score >= 0.15 else 0.50
-            entry.needs_human_review = True  # Human must verify the quote
         else:
-            # Coordinates don't exist → likely full hallucination
-            entry.verified = False
-            entry.confidence = 0.30
-            entry.needs_human_review = True  # Human must verify everything
+            entry.verified = bool(start_line_obj and end_line_obj)
+            entry.confidence = 0.0
+            entry.needs_human_review = True
 
         return entry
 
