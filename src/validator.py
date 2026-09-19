@@ -65,28 +65,27 @@ class ProvenanceValidator:
         semantic_score = self._semantic_check(entry)
 
         # 4. Calculate Objective Verification Score (all 4 pillars combined)
-        if start_line_obj and end_line_obj and match_score >= 0.70:
-            # Tier 1: Coordinates exist + quote grounded → HIGH confidence
+        #    Legal-tech binary trust: either 100% verified or flagged for human review
+        if start_line_obj and end_line_obj and match_score >= 0.70 and semantic_score >= 0.15:
+            # ALL 4 PILLARS PASS → 100% verified, no human review needed
             entry.verified = True
-            base_confidence = round(min(1.0, 0.5 + 0.5 * match_score), 3)
-            # Apply semantic penalty if topic label doesn't match content
-            if semantic_score < 0.15:
-                base_confidence = round(base_confidence * 0.85, 3)
-            entry.confidence = base_confidence
+            entry.confidence = round(min(1.0, 0.5 + 0.5 * match_score), 3)
+            entry.needs_human_review = False
+        elif start_line_obj and end_line_obj and match_score >= 0.70:
+            # Pillars 1,2,4 pass but semantic fails → quote grounded but topic may be mislabeled
+            entry.verified = True
+            entry.confidence = round(min(1.0, 0.5 + 0.5 * match_score) * 0.85, 3)
+            entry.needs_human_review = True  # Human should verify the topic label
         elif start_line_obj and end_line_obj:
-            # Tier 2: Coordinates exist but quote NOT grounded
-            # This is a hallucination signal — the LLM fabricated the quote
+            # Coordinates exist but quote NOT grounded → hallucination signal
             entry.verified = True
-            if semantic_score >= 0.15:
-                # Content semantically matches but quote is fabricated → moderate confidence
-                entry.confidence = 0.60
-            else:
-                # Content doesn't even match semantically → low confidence
-                entry.confidence = 0.50
+            entry.confidence = 0.60 if semantic_score >= 0.15 else 0.50
+            entry.needs_human_review = True  # Human must verify the quote
         else:
-            # Tier 3: Coordinates don't exist in transcript → likely full hallucination
+            # Coordinates don't exist → likely full hallucination
             entry.verified = False
             entry.confidence = 0.30
+            entry.needs_human_review = True  # Human must verify everything
 
         return entry
 

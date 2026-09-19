@@ -36,6 +36,7 @@ class TopicEntry(BaseModel):
     supporting_quote: str = Field(default="", description="Verbatim quote from the transcript anchoring this topic")
     confidence: float = Field(default=1.0, description="Confidence/validation score (0.0 to 1.0)")
     verified: bool = Field(default=False, description="Whether start and end lines were deterministically verified against raw transcript")
+    needs_human_review: bool = Field(default=True, description="Flag for human verification — True unless ALL 4 validation pillars pass at 100%")
 
     @property
     def start_coordinate(self) -> str:
