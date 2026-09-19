@@ -79,7 +79,10 @@ document.addEventListener("DOMContentLoaded", () => {
             card.className = `topic-card ${activeTopicId === idx ? "active" : ""}`;
             card.id = `topic-card-${idx}`;
 
-            const confPercent = Math.round((t.confidence || 0.85) * 100);
+            const isFullyVerified = (t.confidence === 1.0 || t.confidence === 1) && !t.needs_human_review;
+            const badgeHtml = isFullyVerified
+                ? `<span class="confidence-badge badge-verified">✓ 100% Verified</span>`
+                : `<span class="confidence-badge badge-review">⚠ Needs Human Review</span>`;
 
             card.innerHTML = `
                 <div class="topic-header">
@@ -88,7 +91,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 </div>
                 <div class="topic-summary">${t.summary || "Discussion of testimony."}</div>
                 <div class="topic-footer">
-                    <span class="confidence-badge">${confPercent}% Verified</span>
+                    ${badgeHtml}
                     <span class="jump-btn">Jump to Source →</span>
                 </div>
             `;

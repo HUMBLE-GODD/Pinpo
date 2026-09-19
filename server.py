@@ -206,7 +206,8 @@ class PinpoHandler(BaseHTTPRequestHandler):
                     "summary": f"Sworn deposition testimony of {meta.get('witness', 'Witness')} in matter of {meta.get('case_name', 'Examination')}.",
                     "supporting_quote": first_sub.text if first_sub else "",
                     "confidence": 1.0,
-                    "verified": True
+                    "verified": True,
+                    "needs_human_review": False
                 }]
 
             # Serialize full canonical 25-line transcript grid for the frontend viewer
