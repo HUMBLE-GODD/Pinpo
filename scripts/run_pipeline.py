@@ -21,6 +21,7 @@ from typing import Optional
 import argparse
 from src.exporter import TopicIndexExporter
 from src.models import TopicIndex, TopicEntry
+from src.cleaner import TextCleaner
 from scripts.export_viewer_data import export_viewer_data
 
 DEFAULT_PDF = "data/raw/deposition_persis_yu.pdf"
@@ -82,14 +83,27 @@ def run_pipeline(
         raise ValueError(f"No substantive testimony lines found in {pdf_path} between pages {resolved_start} and {resolved_end}.")
 
     # 2. Window Chunking
-    print(f"\n[2/6] Chunking Transcript into {chunk_size_pages}-page windows (overlap: {overlap_pages})...")
+    print(f"\n[2/7] Chunking Transcript into {chunk_size_pages}-page windows (overlap: {overlap_pages})...")
     chunker = TranscriptChunker(chunk_size_pages=chunk_size_pages, overlap_pages=overlap_pages)
     chunks = chunker.create_chunks(canonical_lines)
     print(f"      -> Generated {len(chunks)} contextual processing chunks.")
 
-    # 3. LLM Extraction
-    print(f"\n[3/6] Extracting Topics with Google Gemini (temperature=0)...")
-    segmenter = TopicSegmenter()
+    # 2.5. Document Cleaning & Noise Filtering (NLTK-powered)
+    print(f"\n[3/7] Cleaning Document — Filtering Objection Boilerplate & Procedural Noise...")
+    cleaner = TextCleaner()
+    for chunk in chunks:
+        chunk.lines = cleaner.clean_lines(chunk.lines)
+    original_token_est = sum(len(l.text.split()) for c in chunks for l in c.lines)
+    print(f"      -> Noise-filtered {len(chunks)} chunks (procedural objections collapsed, boilerplate removed).")
+
+    # 3. LLM Extraction (with metadata context injection)
+    print(f"\n[4/7] Extracting Topics with Google Gemini (temperature=0, metadata-aware)...")
+    segmenter = TopicSegmenter(metadata={
+        "witness": resolved_witness,
+        "case_name": resolved_case,
+        "attorney": meta.get("attorney", ""),
+        "date": resolved_date,
+    })
     raw_topics = []
 
     for idx, chunk in enumerate(chunks, 1):
@@ -101,21 +115,21 @@ def run_pipeline(
 
     print(f"      -> Total raw candidate topics: {len(raw_topics)}")
 
-    # 4. Provenance Validation & Coordinate Snapping
-    print(f"\n[4/6] Running Zero-Hallucination Provenance Validation Engine...")
+    # 4. Provenance Validation & Coordinate Snapping (4 Pillars)
+    print(f"\n[5/7] Running 4-Pillar Provenance Validation Engine (Coordinate + Quote + Semantic + Boundary)...")
     validator = ProvenanceValidator(parser)
     validated_topics = validator.validate_batch(raw_topics)
     verified_count = sum(1 for t in validated_topics if t.verified)
     print(f"      -> Mathematically verified {verified_count}/{len(validated_topics)} topics against transcript text.")
 
     # 5. Boundary Smoothing & Digression Absorption
-    print(f"\n[5/6] Merging adjacent topics & filtering conversational digressions...")
+    print(f"\n[6/7] Merging adjacent topics & filtering conversational digressions...")
     merger = TopicMerger(title_similarity_threshold=0.70)
     final_topics = merger.merge(validated_topics)
     print(f"      -> Consolidated into {len(final_topics)} high-level chronological topics.")
 
     # 6. Omission Audit
-    print(f"\n[6/6] Auditing Line Coverage & Checking Silent Omissions...")
+    print(f"\n[7/7] Auditing Line Coverage & Checking Silent Omissions...")
     detector = OmissionDetector(canonical_lines)
     omission_report = detector.audit(final_topics)
     print(f"      -> Total Transcript Lines: {omission_report.total_lines}")

@@ -53,18 +53,34 @@ Rules:
         self,
         api_key: Optional[str] = None,
         model: Optional[str] = None,
-        max_retries: int = 3
+        max_retries: int = 3,
+        metadata: Optional[Dict[str, str]] = None
     ):
         self.api_key = api_key or os.getenv("GEMINI_API_KEY")
         self.model = model or os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
         self.max_retries = max_retries
+        self.metadata = metadata or {}
 
         if not self.api_key:
             raise ValueError("GEMINI_API_KEY is required to initialize TopicSegmenter.")
 
     def segment_chunk(self, chunk: TranscriptChunk) -> List[TopicEntry]:
         """Processes a single transcript chunk and returns candidate topic entries."""
-        user_prompt = f"""Analyze this deposition transcript segment (Pages {chunk.start_page} to {chunk.end_page}):
+        # Build metadata context block for domain-aware topic extraction
+        meta_context = ""
+        if self.metadata:
+            meta_lines = ["DEPOSITION CONTEXT:"]
+            if self.metadata.get("witness"):
+                meta_lines.append(f"  Witness/Deponent: {self.metadata['witness']}")
+            if self.metadata.get("case_name"):
+                meta_lines.append(f"  Case/Matter: {self.metadata['case_name']}")
+            if self.metadata.get("attorney"):
+                meta_lines.append(f"  Examining Attorney: {self.metadata['attorney']}")
+            if self.metadata.get("date"):
+                meta_lines.append(f"  Date: {self.metadata['date']}")
+            meta_context = "\n".join(meta_lines) + "\n\n"
+
+        user_prompt = f"""{meta_context}Analyze this deposition transcript segment (Pages {chunk.start_page} to {chunk.end_page}):
 
 {chunk.formatted_text}
 

@@ -10,6 +10,7 @@ from difflib import SequenceMatcher
 
 from src.models import TopicEntry, TranscriptLine
 from src.parser import TranscriptParser
+from src.cleaner import TextCleaner
 
 
 class ProvenanceValidator:
@@ -20,6 +21,7 @@ class ProvenanceValidator:
 
     def __init__(self, parser: TranscriptParser):
         self.parser = parser
+        self.cleaner = TextCleaner()
 
     def validate_and_align(self, entry: TopicEntry) -> TopicEntry:
         """
@@ -59,13 +61,20 @@ class ProvenanceValidator:
         if end_line_obj:
             entry.end_global_id = end_line_obj.global_line_id
 
-        # 3. Calculate Objective Verification Score
+        # 3. Semantic Validation (Pillar 3) — NLTK-powered keyword overlap
+        semantic_score = self._semantic_check(entry)
+
+        # 4. Calculate Objective Verification Score (all 4 pillars combined)
         if start_line_obj and end_line_obj and match_score >= 0.70:
             entry.verified = True
-            entry.confidence = round(min(1.0, 0.5 + 0.5 * match_score), 3)
+            base_confidence = round(min(1.0, 0.5 + 0.5 * match_score), 3)
+            # Apply semantic penalty if topic label doesn't match content
+            if semantic_score < 0.15:
+                base_confidence = round(base_confidence * 0.85, 3)  # Penalize mislabeled topics
+            entry.confidence = base_confidence
         elif start_line_obj and end_line_obj:
             entry.verified = True
-            entry.confidence = 0.85
+            entry.confidence = 0.85 if semantic_score >= 0.15 else 0.75
         else:
             entry.verified = False
             entry.confidence = 0.40
@@ -75,6 +84,34 @@ class ProvenanceValidator:
     def validate_batch(self, entries: List[TopicEntry]) -> List[TopicEntry]:
         """Validates an entire collection of candidate topics."""
         return [self.validate_and_align(e) for e in entries]
+
+    def _semantic_check(self, entry: TopicEntry) -> float:
+        """
+        Pillar 3: Semantic Validation.
+        Uses NLTK-powered keyword extraction to verify that the topic label and summary
+        semantically correspond to the actual transcript text at the given coordinates.
+        
+        Returns a keyword overlap score between 0.0 and 1.0.
+        """
+        # Build the topic's semantic fingerprint from label + summary
+        topic_text = f"{entry.topic} {entry.summary}".strip()
+        if not topic_text:
+            return 0.0
+
+        # Extract actual transcript text at the claimed coordinates
+        range_lines = self.parser.get_range(
+            entry.start_page, entry.start_line,
+            entry.end_page, entry.end_line
+        )
+        if not range_lines:
+            return 0.0
+
+        transcript_text = " ".join(l.text for l in range_lines if l.text.strip())
+        if not transcript_text.strip():
+            return 0.0
+
+        # Compute NLTK-powered keyword overlap
+        return self.cleaner.compute_keyword_overlap(topic_text, transcript_text)
 
     def _locate_quote(self, entry: TopicEntry) -> Tuple[Optional[TranscriptLine], Optional[TranscriptLine], float]:
         """
