@@ -66,18 +66,27 @@ class ProvenanceValidator:
 
         # 4. Calculate Objective Verification Score (all 4 pillars combined)
         if start_line_obj and end_line_obj and match_score >= 0.70:
+            # Tier 1: Coordinates exist + quote grounded → HIGH confidence
             entry.verified = True
             base_confidence = round(min(1.0, 0.5 + 0.5 * match_score), 3)
             # Apply semantic penalty if topic label doesn't match content
             if semantic_score < 0.15:
-                base_confidence = round(base_confidence * 0.85, 3)  # Penalize mislabeled topics
+                base_confidence = round(base_confidence * 0.85, 3)
             entry.confidence = base_confidence
         elif start_line_obj and end_line_obj:
+            # Tier 2: Coordinates exist but quote NOT grounded
+            # This is a hallucination signal — the LLM fabricated the quote
             entry.verified = True
-            entry.confidence = 0.85 if semantic_score >= 0.15 else 0.75
+            if semantic_score >= 0.15:
+                # Content semantically matches but quote is fabricated → moderate confidence
+                entry.confidence = 0.60
+            else:
+                # Content doesn't even match semantically → low confidence
+                entry.confidence = 0.50
         else:
+            # Tier 3: Coordinates don't exist in transcript → likely full hallucination
             entry.verified = False
-            entry.confidence = 0.40
+            entry.confidence = 0.30
 
         return entry
 
