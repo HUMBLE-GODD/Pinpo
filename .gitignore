@@ -49,3 +49,4 @@ env/
 *.pdf
 !data/raw/README.md
 data/uploads/
+study_guides/

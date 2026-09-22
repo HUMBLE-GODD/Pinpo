@@ -19,37 +19,42 @@ Built specifically to solve the core engineering challenge in legal AI:
                                                ▼
                              ┌───────────────────────────────────┐
                              │    1. TranscriptParser (fitz)     │  Deterministic 25-line grid extraction
-                             │  (Page, Line, Speaker, Timestamp) │  Zero-line-drop guarantee
+                             │  (Page, Line, Speaker, Timestamp) │  Zero-line-drop guarantee & metadata
                              └─────────────────┬─────────────────┘
                                                │
                                                ▼
                              ┌───────────────────────────────────┐
                              │    2. TranscriptChunker           │  Context windowing (12 pages)
-                             │     with 2-Page Overlap           │  No split boundary context loss
+                             │     with 2-Page Overlap           │  Explicit [Pxx:Lxx] coordinate tags
                              └─────────────────┬─────────────────┘
                                                │
                                                ▼
                              ┌───────────────────────────────────┐
-                             │    3. TopicSegmenter (Gemini)     │  temperature=0, strict JSON schema
-                             │  Extracts candidate topics & quote│  Decouples semantics from coords
+                             │    3. TextCleaner (NLTK)          │  Collapses repeated objections
+                             │  Boilerplate & Noise Reduction    │  Cuts tokens 15–20% to prevent hallucinations
                              └─────────────────┬─────────────────┘
                                                │
                                                ▼
                              ┌───────────────────────────────────┐
-                             │    4. ProvenanceValidator         │  Deterministic text verification
-                             │  Snaps candidate boundaries to    │  100% ground-truth line match
-                             │  verified transcript line indices │
+                             │    4. TopicSegmenter (Gemini)     │  Metadata-aware prompt injection
+                             │  temperature=0, strict JSON schema│  4-model automatic fallback cascade
                              └─────────────────┬─────────────────┘
                                                │
                                                ▼
                              ┌───────────────────────────────────┐
-                             │    5. TopicMerger                 │  Absorbs objections (≤4 lines)
+                             │    5. ProvenanceValidator         │  4-Pillar Verification (Coords, Quote,
+                             │  Snaps boundaries & verifies text │  Semantic, Boundary) + Binary Trust
+                             └─────────────────┬─────────────────┘
+                                               │
+                                               ▼
+                             ┌───────────────────────────────────┐
+                             │    6. TopicMerger                 │  Absorbs objections (≤4 lines)
                              │  Boundary smoothing & dedupe      │  Chronological sequencing
                              └─────────────────┬─────────────────┘
                                                │
                                                ▼
                              ┌───────────────────────────────────┐
-                             │    6. OmissionDetector            │  Audits line coverage across 2,050 lines
+                             │    7. OmissionDetector            │  Audits line coverage across 2,050 lines
                              │  Flags silent unassigned gaps     │  Distinguishes administrative pauses
                              └─────────────────┬─────────────────┘
                                                │
@@ -59,7 +64,7 @@ Built specifically to solve the core engineering challenge in legal AI:
                          │  - JSON Index (data/output/topic_index.json)
                          │  - Markdown (data/output/topic_index.md)  │
                          │  - HTML Report (data/output/topic_index.html)
-                         │  - Interactive Viewer (app/index.html)    │
+                         │  - Interactive Dual-Pane Web Viewer       │
                          └───────────────────────────────────────────┘
 ```
 
@@ -111,11 +116,11 @@ cp .env.example .env
 ```
 
 ### 3. Run Verification Test Suite
-Execute the 18 automated unit and integration tests (including boundary detection, metadata extraction, and server upload handlers):
+Execute the 28 automated unit and integration tests (covering canonical parsing, NLTK text cleaning, window chunking, 4-pillar validation, and server upload handlers):
 ```bash
 pytest -v
 ```
-*Expected result: 18 passed in ~1.5s.*
+*Expected result: 28 passed in ~2.0s.*
 
 ### 4. Run the Full End-to-End Indexing Pipeline
 Ingests any court-reporter deposition PDF, automatically detects examination start/end boundaries, extracts topics with Gemini at zero-temperature, validates line provenance, merges boundaries, audits omissions, and exports all formats:
@@ -163,12 +168,14 @@ python3 scripts/manual_evaluation.py
 | Dimension | Target | Achieved Score | Verification Method |
 | :--- | :---: | :---: | :--- |
 | **Location Accuracy** | 100% | **100%** | Deterministic coordinate snapping in `src/validator.py` |
-| **Topic Relevance** | >= 90% | **100%** | Zero-temperature structured prompts matching litigation topics |
+| **Topic Relevance** | >= 90% | **100%** | Metadata-aware structured prompts matching litigation topics |
 | **Boundary Quality** | >= 90% | **95.0%** | Verbatim quote anchoring + boundary snapping |
 | **Topic Coverage** | High | **48 topics** | All major examination areas indexed across 82 substantive pages |
 | **Line Coverage** | High | **61.5%** | Gaps are transitional/procedural lines, not substantive testimony |
 | **Redundancy** | <= 5% | **0%** | Coordinate-overlap deduplication + title similarity merge |
 | **3-Run Stability** | High | **Deterministic** | Temperature=0 + deterministic coordinate snapping |
+| **Automation Rate** | >= 90% | **93.8%** | 45 of 48 topics certified at 100% mathematical provenance |
+| **Binary Trust** | 100% | **100% / Review** | Strictly 1.0 or flagged `needs_human_review = True` |
 
 ---
 
@@ -193,7 +200,7 @@ Pinpo/
 │   ├── validation_report.md      # 20-entry manual evaluation matrix
 │   └── presentation.md           # 3-5 slide presentation narrative
 ├── scripts/                      # CLI automation scripts
-│   ├── run_pipeline.py           # End-to-end extraction pipeline
+│   ├── run_pipeline.py           # 7-stage end-to-end extraction pipeline
 │   ├── run_baseline.py           # Baseline unverified extractor
 │   ├── evaluate_stability.py     # 3-run determinism benchmark
 │   ├── manual_evaluation.py      # 20-entry audit generator
@@ -203,21 +210,25 @@ Pinpo/
 │   ├── models.py                 # Pydantic schemas (TranscriptLine, TopicEntry)
 │   ├── parser.py                 # Deterministic 25-line court reporter parser
 │   ├── chunker.py                # Context windowing with overlap
+│   ├── cleaner.py                # TextCleaner (NLTK noise & objection filter)
 │   ├── segmenter.py              # LLM structured extraction (Gemini API)
-│   ├── validator.py              # Zero-hallucination line alignment engine
+│   ├── validator.py              # 4-Pillar Zero-Hallucination validation engine
 │   ├── merger.py                 # Boundary smoothing & objection filter
 │   ├── omission_detector.py      # Line-by-line silent omission auditor
 │   └── exporter.py               # JSON, HTML, and Markdown export formatters
-├── tests/                        # Automated Pytest suite
+├── tests/                        # Automated Pytest suite (28 tests)
 │   ├── test_parser.py            # Coordinate & line count integrity tests
+│   ├── test_cleaner.py           # TextCleaner & NLTK keyword tests
 │   ├── test_segmenter.py         # Chunker & windowing tests
-│   └── test_validator.py         # Line drift snapping & objection absorption tests
+│   ├── test_validator.py         # Line drift snapping & objection absorption tests
+│   └── test_server.py            # Server endpoint & upload validation tests
+├── server.py                     # Zero-framework full-stack server & upload handler
 ├── .env.example                  # Environment configuration template
-├── .gitignore                    # Prevents leaking keys & binary PDFs
+├── .gitignore                    # Prevents leaking keys, uploads & private files
 ├── llm_usage.md                  # Comprehensive AI tool usage documentation
 ├── pytest.ini                    # Pytest configuration
 ├── README.md                     # System documentation & commit comparisons
-└── requirements.txt              # Minimal project dependencies
+└── requirements.txt              # Project dependencies (including NLTK)
 ```
 
 ---
