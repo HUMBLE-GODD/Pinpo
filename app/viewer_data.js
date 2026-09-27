@@ -15,9 +15,9 @@ window.DEPOSITION_DATA = {
     "end_global_id": 48,
     "summary": "The examining attorney introduced himself and explained the basic rules of a deposition, including testifying under penalty of perjury, waiting for questions to end, and the role of objections. The witness confirmed understanding and her ability to provide testimony.",
     "supporting_quote": "One of them is everything you're saying today is made under penalty of perjury. Do you understand that?",
-    "confidence": 1.0,
-    "verified": true,
-    "needs_human_review": false
+    "confidence": 0.0,
+    "verified": false,
+    "needs_human_review": true
   },
   {
     "topic": "Expert Retention and Scope of Testimony",
@@ -29,9 +29,9 @@ window.DEPOSITION_DATA = {
     "end_global_id": 68,
     "summary": "The witness confirmed her retention as an expert in the case and outlined the scope of her testimony, which includes providing historical context on ITT Institute and the for-profit industry, the 90/10 rules, and opining on defects in PEAKS program loan documents.",
     "supporting_quote": "I have been asked to provide a historical overview of the historical practices of the ITT Institute, along with the for-profit industry and, in particular, with regards to the 90/10 rules and how this loan fits in with that.",
-    "confidence": 1.0,
-    "verified": true,
-    "needs_human_review": false
+    "confidence": 0.0,
+    "verified": false,
+    "needs_human_review": true
   },
   {
     "topic": "Procedural Admonitions and Expert Report Marking",
@@ -57,9 +57,9 @@ window.DEPOSITION_DATA = {
     "end_global_id": 117,
     "summary": "The witness confirmed she is an attorney, and the examining attorney introduced the plan to review her CV, which was part of Exhibit 1, explaining how it would be displayed and manipulated on screen.",
     "supporting_quote": "You are an attorney; correct? That is correct. As a matter of fact, why don't we go into your CV.",
-    "confidence": 1.0,
-    "verified": true,
-    "needs_human_review": false
+    "confidence": 0.0,
+    "verified": false,
+    "needs_human_review": true
   },
   {
     "topic": "Student Borrower Protection Center - Mission and Policy Agenda",
@@ -170,7 +170,7 @@ window.DEPOSITION_DATA = {
     "summary": "The witness began working in the student loan field in 2009 as a legal aid attorney, and her work at the National Consumer Law Center involved researching servicing laws, reviewing contracts, and providing RFI comments. The witness clarified she has never worked as or for a loan servicer but gained extensive knowledge of the student loan market since 2009 as a legal aid attorney, including researching laws, reviewing contracts, and testifying before Congress on student loan servicing in her capacity at the National Consumer Law Center.",
     "supporting_quote": "I started working in this field in 2009 as a legal aid attorney representing student loan borrowers. The work that I did at the National Consumer Law Center involved researching laws related to servicing.",
     "confidence": 0.0,
-    "verified": true,
+    "verified": false,
     "needs_human_review": true
   },
   {
@@ -548,7 +548,7 @@ window.DEPOSITION_DATA = {
     "summary": "The witness discussed 2014 investigations by state attorneys general and the U.S. Department of Education into ITT for fraud and deceptive marketing. She stated that these investigations primarily focused on ITT's practices and that she was unaware of any public findings of wrongdoing against the Vervent defendants by either entity.",
     "supporting_quote": "My understanding of those investigations is they were focused on the practices of ITT. ... Similarly, the Department of Education's findings are based upon the -- the -- the behavior of ITT as it was making the loans that Vervent was servicing, but it was focused primarily on ITT.",
     "confidence": 0.0,
-    "verified": true,
+    "verified": false,
     "needs_human_review": true
   },
   {
@@ -562,7 +562,7 @@ window.DEPOSITION_DATA = {
     "summary": "After a recess, the witness clarified her professional experience, stating that while her work sometimes involves investigating situations, she does not consider herself a 'professional investigator' or a federal regulator. The discussion then shifted to the general nature of investigations, with the witness explaining that an investigation typically occurs due to complaints or allegations to determine if wrongdoing has occurred, but the mere fact of an investigation does not automatically mean wrongdoing has been found. Ms. Yu clarified that while her work sometimes involves investigating situations, she does not consider herself a professional investigator. She also explained that investigations typically occur to find out if wrongdoing has occurred, and evidence of wrongdoing can exist before a final determination.",
     "supporting_quote": "I would say that part of the work that I do sometimes involves investigating situations. I don't think I would describe myself as an investigator. ... That is why an investigation occurs, in order to find out whether or not wrongdoing has occurred.",
     "confidence": 0.0,
-    "verified": true,
+    "verified": false,
     "needs_human_review": true
   },
   {

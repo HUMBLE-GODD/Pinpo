@@ -31,7 +31,7 @@ Built specifically to solve the core engineering challenge in legal AI:
                                                ▼
                              ┌───────────────────────────────────┐
                              │    3. TextCleaner (NLTK)          │  Collapses repeated objections
-                             │  Boilerplate & Noise Reduction    │  Cuts tokens 15–20% to prevent hallucinations
+                             │  Boilerplate & Noise Reduction    │  Filters procedural noise to prevent hallucinations
                              └─────────────────┬─────────────────┘
                                                │
                                                ▼

@@ -1,6 +1,12 @@
 """
 Topic Index Exporter.
 Produces standard machine-readable JSON and human-readable HTML/Markdown formats.
+
+This is the final export stage of the pipeline. Takes the TopicIndex model and
+serializes it into three formats:
+  1. JSON — machine-readable, consumed by the web viewer and downstream tools
+  2. Markdown — human-readable table format for documentation and reports
+  3. HTML — self-contained, styled HTML page with professional table layout
 """
 
 import html
@@ -10,12 +16,22 @@ from typing import Optional
 from src.models import TopicIndex
 
 
+# =========================================================================
+# [BLOCK-25: TopicIndexExporter — Multi-Format Export Engine]
+# WHAT: Exports a TopicIndex into JSON, Markdown, and HTML simultaneously.
+# WHY: Different consumers need different formats:
+#   - JSON: Web viewer (app/app.js), programmatic access, API responses
+#   - Markdown: README documentation, GitHub rendering, quick review
+#   - HTML: Self-contained report that can be opened in any browser
+# HOW: Each export method takes the same TopicIndex model and serializes it
+#      differently. Pydantic's model_dump() provides the JSON serialization.
+# =========================================================================
 class TopicIndexExporter:
     """Exports structured TopicIndex into JSON, Markdown, and self-contained HTML."""
 
     def __init__(self, output_dir: str = "data/output"):
         self.output_dir = Path(output_dir)
-        self.output_dir.mkdir(parents=True, exist_ok=True)
+        self.output_dir.mkdir(parents=True, exist_ok=True)  # Create output directory if it doesn't exist
 
     def export_all(self, index: TopicIndex, base_name: str = "topic_index"):
         """Exports JSON, Markdown, and HTML formats simultaneously."""
@@ -23,11 +39,25 @@ class TopicIndexExporter:
         self.export_markdown(index, self.output_dir / f"{base_name}.md")
         self.export_html(index, self.output_dir / f"{base_name}.html")
 
+    # =========================================================================
+    # [BLOCK-25A: JSON Export — Machine-Readable Serialization]
+    # WHAT: Serializes TopicIndex to a JSON file using Pydantic's model_dump().
+    # WHY: The web viewer (app/app.js) reads this JSON to display topics.
+    #      Also used by the pipeline itself for re-loading previous results.
+    # =========================================================================
     def export_json(self, index: TopicIndex, file_path: Path):
+        """Exports TopicIndex as indented JSON."""
         with open(file_path, "w", encoding="utf-8") as f:
-            json.dump(index.model_dump(), f, indent=2)
+            json.dump(index.model_dump(), f, indent=2)  # model_dump() converts Pydantic model to dict
 
+    # =========================================================================
+    # [BLOCK-25B: Markdown Export — Human-Readable Table]
+    # WHAT: Creates a GitHub Flavored Markdown table with all topics.
+    # WHY: Easy to include in README, review in any text editor, and renders
+    #      nicely on GitHub. Includes verification status emoji (✅/⚠️).
+    # =========================================================================
     def export_markdown(self, index: TopicIndex, file_path: Path):
+        """Exports TopicIndex as a Markdown table."""
         md_lines = [
             f"# {index.title}",
             f"**Deponent / Witness:** {index.witness}  ",
@@ -37,13 +67,15 @@ class TopicIndexExporter:
             "",
             "---",
             "",
+            # Table header
             "| # | Topic | Start Coordinate | End Coordinate | Summary | Supporting Quote | Verified |",
             "|---|---|---|---|---|---|:---:|",
         ]
 
+        # Generate one row per topic
         for idx, t in enumerate(index.topics, 1):
-            ver_tag = "✅" if t.verified else "⚠️"
-            quote_clean = t.supporting_quote.replace("\n", " ").replace("|", "\\|")
+            ver_tag = "✅" if t.verified else "⚠️"  # Binary trust badge
+            quote_clean = t.supporting_quote.replace("\n", " ").replace("|", "\\|")  # Escape pipe chars
             summary_clean = t.summary.replace("\n", " ").replace("|", "\\|")
             quote_display = f'*"{quote_clean[:100]}..."*' if quote_clean else "*(No quote)*"
             md_lines.append(
@@ -53,11 +85,23 @@ class TopicIndexExporter:
         with open(file_path, "w", encoding="utf-8") as f:
             f.write("\n".join(md_lines))
 
+    # =========================================================================
+    # [BLOCK-25C: HTML Export — Self-Contained Styled Report]
+    # WHAT: Generates a complete, self-contained HTML page with inline CSS
+    #       that displays the topic index in a professional table layout.
+    # WHY: Can be opened directly in any browser without a server. Includes
+    #      color-coded verification badges (green=verified, amber=review).
+    # DESIGN: All CSS is inline (no external files needed). The HTML is
+    #         completely self-contained for portability.
+    # =========================================================================
     def export_html(self, index: TopicIndex, file_path: Path):
+        """Exports TopicIndex as a self-contained HTML page with inline styles."""
         rows = []
         for idx, t in enumerate(index.topics, 1):
+            # Choose badge style based on verification status
             badge_class = "badge-verified" if t.verified else "badge-unverified"
             badge_text = "Verified" if t.verified else "Review"
+            # HTML-escape all user content to prevent XSS
             safe_topic = html.escape(t.topic)
             safe_summary = html.escape(t.summary)
             safe_quote = html.escape(t.supporting_quote)
@@ -73,6 +117,7 @@ class TopicIndexExporter:
             </tr>
             """)
 
+        # Complete HTML document with inline CSS
         html_content = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
